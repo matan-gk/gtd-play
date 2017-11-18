@@ -1,0 +1,20 @@
+{
+  "name": "gtd-play",
+  "version": "0.0.1",
+  "description": "GTD playground - testing a GTD app concept",
+  "main": "server.js",
+  "dependencies": {
+    "express": "^4.16.2",
+    "google-auth-library": "^0.11.0",
+    "googleapis": "^22.2.0",
+    "hbs": "^4.0.1",
+    "winston": "^2.4.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "Matan Gal Kochavi",
+  "license": "ISC"
+}

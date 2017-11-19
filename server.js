@@ -6,7 +6,9 @@ const googleInit = require('./google-init');
 const gmail = require('./gmail');
 const googleCalendar = require('./google-calendar');
 const taskList = require('./tasklist');
-  
+
+const port = process.env.PORT || 3000;
+
 var app = express();
     
 hbs.registerPartials(__dirname + '/views/partials');
@@ -73,6 +75,6 @@ googleInit.init((auth) => {
 
 console.log('loading...')
 
-app.listen(3000, () => {
-    console.log('Server is up.');
+app.listen(port, () => {
+    console.log(`Server is up on port ${port}`);
 });

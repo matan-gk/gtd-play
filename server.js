@@ -2,9 +2,10 @@
 const express = require('express');
 const hbs = require('hbs');
 
+const googleInit = require('./google-init');
 const gmail = require('./gmail');
-const taskList = require('./tasklist');
 const googleCalendar = require('./google-calendar');
+const taskList = require('./tasklist');
   
 var app = express();
     
@@ -15,21 +16,34 @@ app.use(express.static(__dirname + '/wwwroot'));
 
 app.get('/listemails', (req, res) => {
     
-        var listEmailsPromise = gmail.listEmails(gmailAuth);
-    
-        //console.log(listEmailsPromise);
-    
-        listEmailsPromise.then((messagesList) => {
-            res.send(messagesList);
-        });
-        listEmailsPromise.catch(err => {
-            //console.log('Unexpected error');
-            res.send('Unexpected error');
-        });
-    
+    var listEmailsPromise = gmail.listEmails(googleAuth);
+
+    //console.log(listEmailsPromise);
+
+    listEmailsPromise.then((messagesList) => {
+        res.send(messagesList);
     });
+    listEmailsPromise.catch(err => {
+        //console.log('Unexpected error');
+        res.send('Unexpected error');
+    });
+});
+
+
+app.get('/listEvents', (req, res) => {
     
-app.get('/taskTest', (req, res) => {
+    var listEventsPromise = googleCalendar.listEvents(googleAuth);
+
+    listEventsPromise.then((eventsList) => {
+        res.send(eventsList);
+    });
+    listEventsPromise.catch(err => {
+        res.send('Unexpected error');
+    });
+});
+
+
+app.get('/listTasks', (req, res) => {
     
     taskList.addTask('task 1', 'details for task 1');
     taskList.addTask('task 2', 'details for task 2');
@@ -51,10 +65,10 @@ app.get('/test', (req,res) => {
     });
 });
 
-var gmailAuth = undefined;
+var googleAuth = undefined;
 
-gmail.init((auth) => {
-    gmailAuth = auth;
+googleInit.init((auth) => {
+    googleAuth = auth;
 });
 
 console.log('loading...')
@@ -62,4 +76,3 @@ console.log('loading...')
 app.listen(3000, () => {
     console.log('Server is up.');
 });
-googleCalendar.init();

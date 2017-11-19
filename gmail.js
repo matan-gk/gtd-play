@@ -1,103 +1,4 @@
-var fs = require('fs');
-var readline = require('readline');
 var google = require('googleapis');
-var googleAuth = require('google-auth-library');
-
-
-// If modifying these scopes, delete your previously saved credentials
-// at ~/.credentials/gmail-nodejs-quickstart.json
-var SCOPES = ['https://www.googleapis.com/auth/gmail.readonly'];
-var TOKEN_DIR = (process.env.HOME || process.env.HOMEPATH ||
-    process.env.USERPROFILE) + '/.credentials/';
-var TOKEN_PATH = TOKEN_DIR + 'gmail-nodejs-quickstart.json';
-
-var init = (callback) => {
-    // Load client secrets from a local file.
-    fs.readFile('client_secret.json', function processClientSecrets(err, content) {
-    if (err) {
-      console.log('Error loading client secret file: ' + err);
-      return;
-    }
-    // Authorize a client with the loaded credentials, then call the
-    // Gmail API.
-    authorize(JSON.parse(content), callback);
-    });
-}
-
-/**
- * Create an OAuth2 client with the given credentials, and then execute the
- * given callback function.
- *
- * @param {Object} credentials The authorization client credentials.
- * @param {function} callback The callback to call with the authorized client.
- */
-function authorize(credentials, callback) {
-  var clientSecret = credentials.installed.client_secret;
-  var clientId = credentials.installed.client_id;
-  var redirectUrl = credentials.installed.redirect_uris[0];
-  var auth = new googleAuth();
-  var oauth2Client = new auth.OAuth2(clientId, clientSecret, redirectUrl);
-
-  // Check if we have previously stored a token.
-  fs.readFile(TOKEN_PATH, function(err, token) {
-    if (err) {
-      getNewToken(oauth2Client, callback);
-    } else {
-      //getNewToken(oauth2Client, callback);
-      oauth2Client.credentials = JSON.parse(token);
-      callback(oauth2Client);
-    }
-  });
-}
-
-/**
- * Get and store new token after prompting for user authorization, and then
- * execute the given callback with the authorized OAuth2 client.
- *
- * @param {google.auth.OAuth2} oauth2Client The OAuth2 client to get token for.
- * @param {getEventsCallback} callback The callback to call with the authorized
- *     client.
- */
-function getNewToken(oauth2Client, callback) {
-  var authUrl = oauth2Client.generateAuthUrl({
-    access_type: 'offline',
-    scope: SCOPES
-  });
-  console.log('Authorize this app by visiting this url: ', authUrl);
-  var rl = readline.createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-  rl.question('Enter the code from that page here: ', function(code) {
-    rl.close();
-    oauth2Client.getToken(code, function(err, token) {
-      if (err) {
-        console.log('Error while trying to retrieve access token', err);
-        return;
-      }
-      oauth2Client.credentials = token;
-      storeToken(token);
-      callback(oauth2Client);
-    });
-  });
-}
-
-/**
- * Store token to disk be used in later program executions.
- *
- * @param {Object} token The token to store to disk.
- */
-function storeToken(token) {
-  try {
-    fs.mkdirSync(TOKEN_DIR);
-  } catch (err) {
-    if (err.code != 'EEXIST') {
-      throw err;
-    }
-  }
-  fs.writeFile(TOKEN_PATH, JSON.stringify(token));
-  console.log('Token stored to ' + TOKEN_PATH);
-}
 
 /**
  * Lists the labels in the user's account.
@@ -127,91 +28,106 @@ function listLabels(auth) {
   });
 }
 
-function listEmails(auth) {
+var getMessageIdList = (auth) => {
+  return new Promise((resolve, reject) => {
 
     var gmail = google.gmail('v1');
-    var messageListPromise = new Promise((resolve, reject) => {
-        gmail.users.messages.list({
-            auth: auth,
-            userId: 'me',
-        }, (err, response) => {
-            if (err) {
-                reject(err);
-            } else {
-            resolve({auth, response});
-            }
-        });
-    }); // closing messageListPromise
-  
-    return messageListPromise.then(loopOverEmails,rejectedPromise);
+    gmail.users.messages.list({
+      auth: auth,
+      userId: 'me',
+    }, (err, response) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve({auth, response});
+      }
+    });
+  }); 
+}
+
+function listEmails(auth) {
+  return getMessageIdList(auth)
+  .then((response) => {
+    var messages = response.response.messages;
+    if (messages === undefined) {
+      console.log('could not get messages from response. Printing response:');
+      console.log(response);
+    }
+    if (messages.length == 0) {
+      console.log('No messages found.');
+      resolve([]);
+    } else {
+      //console.log(JSON.stringify(messages, undefined, 2));
+      return loopOverEmails(auth, messages);
+    }
+  },rejectedPromise);
 
 }
 
 function rejectedPromise(err) {
   console.log('the API returned an error:',err);
-    return promise.reject(err);
+  return Promise.reject(err);
 }
     
-function loopOverEmails({auth, response}) {
+function loopOverEmails(auth, messages) {
   return new Promise((resolve, reject) => {
-
-    var promiseArray = [];
-    var messagesList = [];
     var gmail = google.gmail('v1');    
-    var messages = response.messages;
-    if (messages.length == 0) {
-      console.log('No messages found.');
-        } else {
-            //console.log('Messages:\n-------------------------');
-            for (var i = 0; i < messages.length; i++) {
-                var message = messages[i];
-                //console.log('fetching message %s', message.id);
-                var getMessagePromise = new Promise((singleResolve, singleReject) => {
-                    gmail.users.messages.get({
-                        auth: auth,
-                        userId: 'me',
-                        id: message.id,
-                        format: 'full'
-                    }, (err, response) => {
-                        if (err) {
-                        singleReject(err);
-                        } else singleResolve(response);
-                    })
-                }); // closing getMessagePromise
 
-                promiseArray.push(getMessagePromise);
+    // Get all the messages, using individual API calls, and creating a promise array with the async calls
+    var getMessagePromiseArray = messages.map((message) => {
+      return new Promise((singleResolve, singleReject) => {
+        gmail.users.messages.get({
+          auth: auth,
+          userId: 'me',
+          id: message.id,
+          format: 'full'
+        }, (err, response) => {
+          if (err) {
+            singleReject(err);
+          } else singleResolve(response);
+        })
+      }); // closing getMessagePromise
+    });
+    
+    // Get the results of the async calls
+    Promise.all(getMessagePromiseArray).then((getMessageResponses) => {
+      console.log('finished retrieving all messages');
+      var messagesList = [];
+      
+      // Retrieving the details from all messages
+      getMessageResponses.map((response) => {
+        console.log(JSON.stringify(response, null, 2))
+        // for each message:
+        // Filter the headers to find the subject and sender
+        var messageSubject = response.payload.headers.filter((header) => header.name.toLowerCase() === 'subject');
+        var messageFrom = response.payload.headers.filter((header) => header.name.toLowerCase() === 'from');
+        if (messageSubject !== [] && messageFrom !== []) {
+          messageSubject = messageSubject[0].value;
+          messageFrom = messageFrom[0].value;
+        }
+        
+        // build the message display object, then push it into the array
+        var messageObject = {
+          //id: message.id,
+          subject: messageSubject,
+          from: messageFrom
+        };  
+        messagesList.push(messageObject);
+        //console.log(messageObject);
+      });
 
-                // handling the retrieval of the messages as they come back using the promise resolutions
-                getMessagePromise.then((response) => {
-                    // Filter the headers to find the subject and sender
-                    messageSubject = response.payload.headers.filter((header) => header.name === 'Subject')[0].value
-                    messageFrom = response.payload.headers.filter((header) => header.name === 'From')[0].value
-                    // build the message display object, then push it into the array
-                    var messageObject = {
-                    //id: message.id,
-                    subject: messageSubject,
-                    from: messageFrom
-                    } ;  
-                    messagesList.push(messageObject);
-                    //console.log(messageObject);
-
-                },rejectedPromise);
-
-            } // closing the message retrieval loop
-
-        } // closing the 'else' clause for the message list
-
-        Promise.all(promiseArray).then((values) => {
-          console.log('finished pupulating all messages');
-          resolve(messagesList); // resolve the top promise, signaling that all messages were received.
-        }, rejectedPromise);
+      resolve(messagesList); // resolve the top promise, signaling that all messages were received.
+    }, (err) => {
+      console.log('some messages could not be retrieved');
+      reject(err);
+    });
+        
   });
       
 }
   
 
 module.exports = {
-    init,
     listLabels,
     listEmails
 }

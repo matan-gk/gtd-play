@@ -13,7 +13,7 @@ var TOKEN_PATH = TOKEN_DIR + 'google-nodejs-gtd-play.json';
 
 var init = (callback) => {
     // Load client secrets from a local file.
-    fs.readFile('client_secret.json', function processClientSecrets(err, content) {
+    fs.readFile('googleApi/client_secret.json', function processClientSecrets(err, content) {
     if (err) {
       console.log('Error loading client secret file: ' + err);
       return;

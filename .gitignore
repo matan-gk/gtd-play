@@ -1,3 +1,6 @@
 node_modules/
 googleApi/client_secret.json
 server/config/config.json
+eventSample.json
+emailSample.json
+tempmessage.json

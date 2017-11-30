@@ -1,0 +1,95 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<title>PoemGTD: Do</title>
+
+<link rel="stylesheet" href="taskList.css" />
+
+<!-- Bootstrap CSS -->
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/css/bootstrap.min.css" integrity="sha384-rwoIResjU2yc3z8GV/NPeZWAv56rSmLldC3R/AZzGRnGxQQKnKkoFVhFQhNUwEyJ" crossorigin="anonymous">
+
+<!-- jQuery first, then Tether, then Bootstrap JS. -->
+<script src="https://code.jquery.com/jquery-3.2.1.min.js" integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4=" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tether/1.4.0/js/tether.min.js" integrity="sha384-DztdAPBWPRXSA/3eYEEUWrWCy7G5KFbe8fFjk5JAIxUYHKkDx6Qin1DkWx51bBrb" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-alpha.6/js/bootstrap.min.js" integrity="sha384-vBWWzlZJ8ea9aCX4pEW3rVHjgjt7zpkNpZk+02D9phzyeVkE+jo0ieGizqPLForn" crossorigin="anonymous"></script>
+<script src="https://code.jquery.com/ui/1.12.1/jquery-ui.js"></script>
+
+</head>
+<body>
+
+<div class="row">
+    <div class="col-6 p-0">
+        
+        <div class="card">
+            <div class="card-header">
+                Calendar
+            </div>
+            <div class="card-block p-0" style="height:320px; overflow:scroll">
+            
+                <div id="eventlist" class="list-group">
+                    {{#each eventList}}
+                    <div id="eventlistRow-{{id}}" class="list-group-item list-group-item-action eventlistRow" onclick="eventClicked('{{id}}')">
+                    <div class="container" style="overflow:visible">
+                        <div class="row">
+                            <div class="col-3">{{#if start.dateTime}}{{start.dateTime}}{{/if}}</div>
+                            <div class="col-8">{{summary}}</div>
+                            <div class="col-1">today</div>
+                        </div>
+                    </div>
+                    </div>
+                    {{/each}}
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                Tasklist
+            </div>
+            <div class="card-block p-0" style="height:320px; overflow:scroll">
+            
+                <div id="tasklist" class="list-group">
+                    {{#each taskList}}
+                    <div id="tasklistRow-{{_id}}" class="list-group-item list-group-item-action tasklistRow" onclick="taskClicked('{{_id}}')">
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-1"><script>document.write({{@index}}+1)</script></div>
+                            <div class="col-8">{{title}}</div>
+                            <div class="col-2">tags</div>
+                            <div class="col-1">today</div>
+                        </div>
+                    </div>
+                    </div>
+                    {{/each}}
+                </div>
+        
+            </div>
+        </div>
+
+    </div>
+    <div class="col-6 p-0">
+
+        <div class="container-fluid p-0 border border-dark">
+
+            <div class="card">
+                <div class="card-header">
+                    Details
+                </div>
+                <div class="card-block" style="height:700px">
+                    <h4 id="detailCardTitle" class="card-title">Nothing selected</h4>
+                    <p id="detailCardText" class="card-text">Select an event of task on the right</p>
+                </div>
+            </div>
+
+        </div>
+        
+    </div>
+</div>
+
+<script type="application/javascript" src="doPage.js"></script>
+
+</body>
+</html>

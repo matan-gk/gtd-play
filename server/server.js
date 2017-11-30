@@ -7,6 +7,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const {ObjectID} = require('mongodb');
 const hbs = require('hbs');
+const fs = require('fs');
 
 var {mongoose} = require('./db/mongoose');
 var {Task} = require('./models/task');
@@ -18,21 +19,11 @@ const googleCalendar = require('./../googleApi/google-calendar');
 
 var app = express();
 hbs.registerPartials(__dirname + '/views/partials');
+
 app.set('view engine', 'hbs');
+app.set('views', __dirname + '/views');
 app.use(express.static(__dirname + '/wwwroot'));
-
-// temp solution for bootstrap
-var fs = require('fs');
-app.get('/bootstrap.min.css', (req, res) => {
-    fs.readFile('/Users/matangal/ref-personal/WebDev/Projects/gtd-play/wwwroot/bootstrap.min.css', (err, cssFile) => {
-        if (err) {
-          console.log('Error loading css file: ' + err);
-          return;
-        }
-        res.send(cssFile);
-    });
-});
-
+console.log(__dirname);
 const listenPort = process.env.PORT;
 
 app.use(bodyParser.json());
@@ -169,13 +160,35 @@ app.delete('/api/users/me/token', authenticate, (req,res) => {
     });
 });
 
+app.get('/api/calendar/:eventId', (req, res) => {
+    var eventId = req.params.eventId;
+
+    return googleCalendar.getEvent(googleAuth, eventId)
+    .then((event) => {
+        res.status(200).send({event});
+    }).catch(err => {
+        res.status(400).send('Unexpected error' + err);
+    });
+
+});
+
+app.get('/api/email/messages/:messageId', (req, res) => {
+    var messageId = req.params.messageId;
+
+    return gmail.getMessageById(googleAuth, messageId).then((message) => {
+        res.status(200).send({message});
+    }).catch(err => {
+        res.status(400).send('Unexpected error' + err);
+    });
+
+});
+
 app.get('/listTasks', authenticate, (req, res) => {
 
     Task.find({
         _creator: req.user._id
     }).then((tasks) => {
-        res.render('viewTasklist.hbs', {
-            pageTitle: 'tasklist',
+        res.render('tasklist.hbs', {
             tasklist: tasks
         })
     }, (err) => {
@@ -199,6 +212,43 @@ app.get('/listEvents', (req, res) => {
     });
 });
 
+app.get('/do', authenticate, (req, res) => {
+    
+    var listEventsPromise = googleCalendar.listEvents(googleAuth);
+
+        listEventsPromise.then((eventList) => {
+
+            return Task.find({
+                _creator: req.user._id
+            }).then((taskList) => {
+                res.render('do.hbs', {
+                    taskList,
+                    eventList
+                })
+            }, (err) => {
+                res.status(400).send(err);
+            });
+        
+        }).catch(err => {
+        res.status(400).send('Unexpected error' + err);
+    });
+
+});
+
+app.get('/process', authenticate, (req, res) => {
+    
+    gmail.listEmails(googleAuth)
+    .then((emaillist) => {
+        fs.writeFileSync('emailSample.json', JSON.stringify(emaillist));
+        res.render('process.hbs', {
+            emaillist
+        })
+    }).catch(err => {
+        res.send('Unexpected error:' + err);
+    });
+
+});
+
 app.get('/listEmails', (req, res) => {
     
     var listEmailsPromise = gmail.listEmails(googleAuth);
@@ -215,6 +265,7 @@ app.get('/listEmails', (req, res) => {
             //console.log('Unexpected error');
             res.send('Unexpected error');
         });
+
 });
 
 var googleAuth = undefined;

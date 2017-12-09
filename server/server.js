@@ -2,6 +2,10 @@ require('./config/config');
 
 console.log('loading...')
 
+if (process.env.ONLINE_ENV === 'false') {
+    console.log('environment: offline');
+  };
+
 const _ = require('lodash');
 const express = require('express');
 const bodyParser = require('body-parser');
@@ -11,7 +15,9 @@ const fs = require('fs');
 
 var {mongoose} = require('./db/mongoose');
 var {Task} = require('./models/task');
+var {Project} = require('./models/project');
 var {User} = require('./models/user');
+
 var {authenticate} = require('./middleware/authenticate');
 const googleInit = require('./../googleApi/google-init');
 const gmail = require('./../googleApi/gmail');
@@ -28,20 +34,46 @@ const listenPort = process.env.PORT;
 
 app.use(bodyParser.json());
 
-// Add a new task
-app.post('/api/tasks', authenticate, (req, res) => {
-    var newTask = new Task ({
-        title: req.body.title,
-        _creator: req.user._id
-    });
+/************************
+*    Tasks API          *
+*************************/
 
-    newTask.save().then((doc) => {
-        res.send(doc);
-    },(err) => {
+// Create a task
+app.post('/api/tasks', authenticate, (req, res) => {
+
+    var projectId = null;
+
+    // verify project ID
+    if (req.body._project) {
+        projectId = req.body._project;
+        if (!ObjectID.isValid(projectId)) {
+            return res.status(400).send();
+        }
+    }
+
+    Project.findById(projectId).then((doc) => {
+
+        if (!doc) return Promise.reject('Project does not exist');
+
+        var newTask = new Task ({
+            title: req.body.title,
+            _creator: req.user._id,
+            _project: projectId
+        });
+
+        newTask.save().then((doc) => {
+            res.send(doc);
+        },(err) => {
+            res.status(400).send(err);
+        });
+        
+    }).catch((err) => {
         res.status(400).send(err);
     });
+
 });
 
+// Get all tasks
 app.get('/api/tasks', authenticate, (req, res) => {
     Task.find({
         _creator: req.user._id
@@ -52,6 +84,24 @@ app.get('/api/tasks', authenticate, (req, res) => {
     });
 });
 
+// Get all tasks under a specific project
+app.get('/api/tasks/byProject/:projectId', authenticate, (req, res) => {
+    var projectId = req.params.projectId;
+    if (!ObjectID.isValid(projectId)) {
+        return res.status(404).send();
+    }
+
+    Task.find({
+        _creator: req.user._id,
+        _project: projectId
+    }).then((tasks) => {
+        res.send({tasks});
+    }, (err) => {
+        res.status(400).send(err);
+    });
+});
+
+// Get an individual task
 app.get('/api/tasks/:taskId', authenticate, (req, res) => {
     var taskId = req.params.taskId;
 
@@ -119,6 +169,108 @@ app.patch('/api/tasks/:taskId', authenticate, (req, res) => {
     });
 });
 
+/************************
+*    Projects API       *
+*************************/
+
+// Create a project
+app.post('/api/projects', authenticate, (req, res) => {
+    var newProject = new Project ({
+        title: req.body.title,
+        _creator: req.user._id,
+    });
+
+    newProject.save().then((doc) => {
+        res.send(doc);
+    },(err) => {
+        res.status(400).send(err);
+    });
+});
+
+// Get all projects
+app.get('/api/projects', authenticate, (req, res) => {
+    Project.find({
+        _creator: req.user._id
+    }).then((projects) => {
+        res.send({projects});
+    }, (err) => {
+        res.status(400).send(err);
+    });
+});
+
+// Get a specific project
+app.get('/api/projects/:projectId', authenticate, (req, res) => {
+    var projectId = req.params.projectId;
+
+    if (!ObjectID.isValid(projectId)) {
+        return res.status(404).send();
+    }
+
+    Project.findOne({
+        _id: projectId,
+        _creator: req.user._id
+    }).then((selectedProject) => {
+        if (!selectedProject) return res.status(404).send();
+        
+        res.send({project: selectedProject});
+
+    }).catch((err) => {
+        res.status(400).send();
+    });
+});
+
+// Delete a project
+app.delete('/api/projects/:projectId', authenticate, (req, res) => {
+    var projectId = req.params.projectId;
+    // console.log('project ID:', projectId)
+    if (!ObjectID.isValid(projectId)) {
+        // console.log('project ID is not valid');
+        res.status(404).send();
+    } else {
+        Project.findOneAndRemove({
+            _id: projectId,
+            _creator: req.user._id
+        }).then((selectedProject) => {
+            if (!selectedProject) res.status(404).send();
+            else res.status(200).send({project: selectedProject});
+        }, (err) => {
+            res.status(400).send();
+        })
+    }
+})
+
+// Update a project
+app.patch('/api/projects/:projectId', authenticate, (req, res) => {
+    var taskId = req.params.projectId;
+    var body = _.pick(req.body, ['title', 'completed']);
+
+    if (!ObjectID.isValid(projectId)) {
+        res.status(404).send();
+    }
+
+    if (_.isBoolean(body.completed) && body.completed) {
+        body.completedAt = new Date().getTime(); 
+    } else {
+        body.completed = false;
+        body.completedAt = null;
+    }
+
+    Project.findOneAndUpdate({
+        _id: projectId,
+        _creator: req.user._id
+    }, { $set: body }, {new: true})
+    .then((selectedProject) => {
+        if (!selectedProject) res.status(404).send();
+        else res.status(200).send({project: selectedProject});
+    }, (err) => {
+        res.status(400).send();
+    });
+});
+
+/************************
+*       Users API       *
+*************************/
+
 // Add a new user
 app.post('/api/users', (req, res) => {
     var newUser = new User ({
@@ -135,10 +287,12 @@ app.post('/api/users', (req, res) => {
     });
 });
 
+// Show the current user
 app.get('/api/users/me', authenticate, (req, res) => {
     res.send(req.user);
 });
 
+// log in
 app.post('/api/users/login', (req, res) => {
     var body = _.pick(req.body, ['email', 'password']);
     
@@ -152,6 +306,7 @@ app.post('/api/users/login', (req, res) => {
 
 });
 
+// Logout (delete the token of the current user)
 app.delete('/api/users/me/token', authenticate, (req,res) => {
     req.user.removeToken(req.token).then(() => {
         res.status(200).send();
@@ -160,6 +315,11 @@ app.delete('/api/users/me/token', authenticate, (req,res) => {
     });
 });
 
+/************************
+*       Calendar API       *
+*************************/
+
+// Get an individual calendar event
 app.get('/api/calendar/:eventId', (req, res) => {
     var eventId = req.params.eventId;
 
@@ -172,6 +332,10 @@ app.get('/api/calendar/:eventId', (req, res) => {
 
 });
 
+/************************
+*       Email API       *
+*************************/
+
 app.get('/api/email/messages/:messageId', (req, res) => {
     var messageId = req.params.messageId;
 
@@ -182,6 +346,10 @@ app.get('/api/email/messages/:messageId', (req, res) => {
     });
 
 });
+
+/************************
+*       Temp pages       *
+*************************/
 
 app.get('/listTasks', authenticate, (req, res) => {
 
@@ -212,6 +380,29 @@ app.get('/listEvents', (req, res) => {
     });
 });
 
+app.get('/listEmails', (req, res) => {
+    
+    var listEmailsPromise = gmail.listEmails(googleAuth);
+    
+        //console.log(listEmailsPromise);
+    
+        listEmailsPromise.then((emailsList) => {
+            res.render('viewEmailList.hbs', {
+                pageTitle: 'Email list',
+                emailsList
+            })
+        });
+        listEmailsPromise.catch(err => {
+            //console.log('Unexpected error');
+            res.send('Unexpected error');
+        });
+
+});
+
+/************************
+*       Main app pages       *
+*************************/
+
 app.get('/do', authenticate, (req, res) => {
     
     var listEventsPromise = googleCalendar.listEvents(googleAuth);
@@ -236,7 +427,7 @@ app.get('/do', authenticate, (req, res) => {
 });
 
 app.get('/process', authenticate, (req, res) => {
-    
+
     gmail.listEmails(googleAuth)
     .then((emaillist) => {
         fs.writeFileSync('emailSample.json', JSON.stringify(emaillist));
@@ -246,25 +437,6 @@ app.get('/process', authenticate, (req, res) => {
     }).catch(err => {
         res.send('Unexpected error:' + err);
     });
-
-});
-
-app.get('/listEmails', (req, res) => {
-    
-    var listEmailsPromise = gmail.listEmails(googleAuth);
-    
-        //console.log(listEmailsPromise);
-    
-        listEmailsPromise.then((emailsList) => {
-            res.render('viewEmailList.hbs', {
-                pageTitle: 'Email list',
-                emailsList
-            })
-        });
-        listEmailsPromise.catch(err => {
-            //console.log('Unexpected error');
-            res.send('Unexpected error');
-        });
 
 });
 

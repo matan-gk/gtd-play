@@ -1,6 +1,6 @@
 var mongoose = require('mongoose');
 
-var Task = mongoose.model('Task', {
+var Project = mongoose.model('Project', {
     title: {
         type: String,
         required: true,
@@ -22,12 +22,9 @@ var Task = mongoose.model('Task', {
     _creator: {
         type: mongoose.Schema.Types.ObjectId,
         required: true
-    },
-    _project: {
-        type: mongoose.Schema.Types.ObjectId,
     }
 });
 
 module.exports = {
-    Task
+    Project
 };

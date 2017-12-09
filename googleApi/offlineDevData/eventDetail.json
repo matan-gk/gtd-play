@@ -1,0 +1,45 @@
+{
+  "kind": "calendar#event",
+  "etag": "\"2995278888741000\"",
+  "id": "_60q30c1g60o30e1i60o4ac1g60rj8gpl88rj2c1h84s34h9g60s30c1g60o30c1g64ok4di38l1j8cpk84rj4c9k6h144e1g75246cq275134gpo88pj2c1g60o30c1g6or42gi484sjac2474p4ch1k68sjada26gqj4c1m8gsk8c1g6530_20171208T190000Z",
+  "status": "confirmed",
+  "htmlLink": "https://www.google.com/calendar/event?eid=XzYwcTMwYzFnNjBvMzBlMWk2MG80YWMxZzYwcmo4Z3BsODhyajJjMWg4NHMzNGg5ZzYwczMwYzFnNjBvMzBjMWc2NG9rNGRpMzhsMWo4Y3BrODRyajRjOWs2aDE0NGUxZzc1MjQ2Y3EyNzUxMzRncG84OHBqMmMxZzYwbzMwYzFnNm9yNDJnaTQ4NHNqYWMyNDc0cDRjaDFrNjhzamFkYTI2Z3FqNGMxbThnc2s4YzFnNjUzMF8yMDE3MTIwOFQxOTAwMDBaIG1hdGFuLm0uZ2FsQG0",
+  "created": "2017-01-01T19:09:14.000Z",
+  "updated": "2017-11-29T18:45:33.800Z",
+  "summary": "Smile",
+  "creator": {
+    "email": "matan.m.gal@gmail.com",
+    "displayName": "Matan Gal",
+    "self": true
+  },
+  "organizer": {
+    "email": "matan.m.gal@gmail.com",
+    "displayName": "Matan Gal",
+    "self": true
+  },
+  "start": {
+    "dateTime": "2017-12-08T11:00:00-08:00",
+    "timeZone": "America/Los_Angeles"
+  },
+  "end": {
+    "dateTime": "2017-12-08T11:00:00-08:00",
+    "timeZone": "America/Los_Angeles"
+  },
+  "recurringEventId": "_60q30c1g60o30e1i60o4ac1g60rj8gpl88rj2c1h84s34h9g60s30c1g60o30c1g64ok4di38l1j8cpk84rj4c9k6h144e1g75246cq275134gpo88pj2c1g60o30c1g6or42gi484sjac2474p4ch1k68sjada26gqj4c1m8gsk8c1g6530",
+  "originalStartTime": {
+    "dateTime": "2017-12-08T11:00:00-08:00",
+    "timeZone": "America/Los_Angeles"
+  },
+  "visibility": "public",
+  "iCalUID": "040000008200E00074C5B7101A82E0080000000011B6CEC434A72144BB809DC3B9B2C8B31000000066ABDA950D92FD42955B45206D9D001F",
+  "sequence": 1,
+  "reminders": {
+    "useDefault": false,
+    "overrides": [
+      {
+        "method": "popup",
+        "minutes": 15
+      }
+    ]
+  }
+}

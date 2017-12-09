@@ -1,5 +1,9 @@
 const google = require('googleapis');
 const formidable = require('formidable');
+const fs = require('fs');
+
+const offlineEmails = require('./offlineDevData/emails.json');
+const offlineEmailDetail = require('./offlineDevData/emailDetail.json');
 
 /**
  * Lists the labels in the user's account.
@@ -47,6 +51,11 @@ var getMessageIdList = (auth) => {
 }
 
 function listEmails(auth) {
+  if (process.env.ONLINE_ENV === 'false') {
+    console.log('offline');
+    return Promise.resolve(offlineEmails);
+  };
+
   return getMessageIdList(auth)
   .then((response) => {
     var messages = response.response.messages;
@@ -137,6 +146,11 @@ function loopOverEmails(auth, messages) {
 
 // Get the data for a single message
 function getMessageById(auth, messageId) {
+  if (process.env.ONLINE_ENV === 'false') {
+    // console.log('offline');
+    return Promise.resolve(offlineEmailDetail);
+  };
+
   return new Promise((resolve, reject) => {
     var gmail = google.gmail('v1');    
 
@@ -149,7 +163,9 @@ function getMessageById(auth, messageId) {
     }, (err, response) => {
       if (err) {
         reject(err);
-      } else resolve(response);
+      } else {
+        resolve(response);
+      }
     });
     
   }).then((response) => {
@@ -158,7 +174,7 @@ function getMessageById(auth, messageId) {
     var messageId = response.id;
     var threadId = response.threadId;
     var mimeType = response.payload.mimeType;
-    var messageBody = parseMessageBody(response.payload, 1)
+    var messageBody = parseMessageBody(response.payload)
     var receivedAt = response.payload.headers.filter((header) => header.name.toLowerCase() === 'date');
     var messageSubject = response.payload.headers.filter((header) => header.name.toLowerCase() === 'subject');
     var messageFrom = response.payload.headers.filter((header) => header.name.toLowerCase() === 'from');
@@ -179,6 +195,7 @@ function getMessageById(auth, messageId) {
       body: messageBody
     };
 
+    fs.writeFileSync('emailDetail.json',JSON.stringify(messageObject, null, 2));
     return Promise.resolve(messageObject);
 
   }).catch((err) => {
@@ -187,30 +204,22 @@ function getMessageById(auth, messageId) {
 
 }
 
-function parseMessageBody(payload, level) {
-  console.log('entering level: ' + level)
+function parseMessageBody(payload) {
   var messageBody = undefined;
   var mimeType = payload.mimeType;
   if (mimeType.indexOf('multipart') > -1) {
-    console.log('going into multipart: ' + payload.parts)
     for (var i=0; i < payload.parts.length; i++) {
-      messageBody = parseMessageBody(payload.parts[i], level + 1);
+      messageBody = parseMessageBody(payload.parts[i]);
       if (messageBody) {
-        console.log('-------------- messageBody ------------------');
-        console.log(messageBody);
-        console.log('---------------------------------------------');
-        console.log('level ' + level + ': returning the message above');        
         return messageBody;
       }
     }
   }
   
   if (payload.mimeType === 'text/html' || payload.mimeType === 'text/plain') {
-    console.log('level ' + level + ': returning text/html');
     return Buffer(payload.body.data, 'base64').toString();
   }
 
-  console.log('level ' + level + ': returning "undefined"');
   return undefined;
 }
 

@@ -8,10 +8,13 @@ var authenticate = (req, res, next) => {
             return Promise.reject();
         }
 
+        //console.log('authentication successful')
+
         req.user = user;
         req.token = token;
         next();
     }).catch((err) => {
+        //console.log('authentication failed')
         res.status(401).send();
     });
 };

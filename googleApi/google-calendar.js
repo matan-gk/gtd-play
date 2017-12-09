@@ -1,5 +1,7 @@
 var google = require('googleapis');
 const fs = require('fs');
+const offlineEvents = require('./offlineDevData/events.json');
+const offlineEventDetail = require('./offlineDevData/eventDetail.json');
 
 /**
  * Lists the next 10 events on the user's primary calendar.
@@ -7,6 +9,11 @@ const fs = require('fs');
  * @param {google.auth.OAuth2} auth An authorized OAuth2 client.
  */
 function listEvents(auth) {
+
+  if (process.env.ONLINE_ENV === 'false') {
+    return Promise.resolve(offlineEvents);
+  };
+
   return new Promise((resolve, reject) => {
 
     var calendar = google.calendar('v3');
@@ -45,6 +52,10 @@ function listEvents(auth) {
 }
 
 function getEvent(auth, eventId) {
+  if (process.env.ONLINE_ENV === 'false') {
+    return Promise.resolve(offlineEventDetail);
+  };
+
   return new Promise((resolve, reject) => {
 
     var calendar = google.calendar('v3');
@@ -62,6 +73,7 @@ function getEvent(auth, eventId) {
           console.log('Error. Returned incorrect or malformed event');
           reject(response);
         } else {
+          fs.writeFileSync('eventDetailSample.json',JSON.stringify(event, null, 2));
           resolve(event);
         }  
       }

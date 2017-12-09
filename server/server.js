@@ -16,6 +16,7 @@ const fs = require('fs');
 var {mongoose} = require('./db/mongoose');
 var {Task} = require('./models/task');
 var {Project} = require('./models/project');
+var {Tag} = require('./models/tag');
 var {User} = require('./models/user');
 
 var {authenticate} = require('./middleware/authenticate');
@@ -41,32 +42,70 @@ app.use(bodyParser.json());
 // Create a task
 app.post('/api/tasks', authenticate, (req, res) => {
 
-    var projectId = null;
-
-    // verify project ID
-    if (req.body._project) {
-        projectId = req.body._project;
-        if (!ObjectID.isValid(projectId)) {
-            return res.status(400).send();
-        }
+    // if we have tags, loop over them and find their IDs
+    if (req.body.tags && typeof(req.body.tags) === 'object') {
+        var tagsPromises = req.body.tags.map((title) => {
+            return Tag.findOne({title}).then((doc) => doc)
+            .catch((err) => {
+                console.log(`could not find tag: ${title}. Error: ${err}`);
+                return null;
+            });
+        });
     }
 
-    Project.findById(projectId).then((doc) => {
+    Promise.all(tagsPromises).then((tagIds) => {
+        var newTaskTags = _.filter(tagIds,(value) => value != null);
+        // console.log('tags collected:', newTaskTags);
 
-        if (!doc) return Promise.reject('Project does not exist');
+        // if project exists, verifying it's a valid project and inserting task with it
+        if (req.body._project) {
+            var projectId = req.body._project;
+            if (!ObjectID.isValid(projectId)) {
+                return res.status(400).send();
+            }
 
-        var newTask = new Task ({
-            title: req.body.title,
-            _creator: req.user._id,
-            _project: projectId
-        });
-
-        newTask.save().then((doc) => {
-            res.send(doc);
-        },(err) => {
-            res.status(400).send(err);
-        });
+            Project.findById(projectId).then((doc) => {
+                
+                if (!doc) return Promise.reject('Project does not exist');
         
+                var newTask = new Task ({
+                    title: req.body.title,
+                    _creator: req.user._id,
+                    _project: projectId,
+                    tags: newTaskTags
+                });
+
+                newTask.save().then((doc) => {
+                    res.send(doc);
+                },(err) => {
+                    res.status(400).send(err);
+                });
+                
+            }).catch((err) => {
+                res.status(400).send(err);
+            });
+                
+        }
+
+        // No project. Setting _project = null
+        else {
+
+            var newTask = new Task ({
+                title: req.body.title,
+                _creator: req.user._id,
+                _project: null
+            });
+
+            newTask.tags.push('5a2b8c2898f420339c8cce14');
+
+            newTask.save().then((doc) => {
+                res.send(doc);
+            },(err) => {
+                res.status(400).send(err);
+            });
+                
+        }
+
     }).catch((err) => {
         res.status(400).send(err);
     });
@@ -268,6 +307,55 @@ app.patch('/api/projects/:projectId', authenticate, (req, res) => {
 });
 
 /************************
+*    Tags API       *
+*************************/
+
+// Create a tag
+app.post('/api/tags', authenticate, (req, res) => {
+    var newTag = new Tag ({
+        title: req.body.title,
+        _creator: req.user._id,
+    });
+
+    newTag.save().then((doc) => {
+        res.send(doc);
+    },(err) => {
+        res.status(400).send(err);
+    });
+});
+
+// Get all tags
+app.get('/api/tags', authenticate, (req, res) => {
+    Tag.find({
+        _creator: req.user._id
+    }).then((tags) => {
+        res.send({tags});
+    }, (err) => {
+        res.status(400).send(err);
+    });
+});
+
+// Delete a tag
+app.delete('/api/tag/:tagId', authenticate, (req, res) => {
+    var tagId = req.params.tagId;
+    // console.log('Tag ID:', tagId)
+    if (!ObjectID.isValid(tagId)) {
+        // console.log('Tag ID is not valid');
+        res.status(404).send();
+    } else {
+        Tag.findOneAndRemove({
+            _id: tagId,
+            _creator: req.user._id
+        }).then((selectedTag) => {
+            if (!selectedTag) res.status(404).send();
+            else res.status(200).send({Tag: selectedTag});
+        }, (err) => {
+            res.status(400).send();
+        })
+    }
+})
+
+/************************
 *       Users API       *
 *************************/
 
@@ -316,11 +404,23 @@ app.delete('/api/users/me/token', authenticate, (req,res) => {
 });
 
 /************************
-*       Calendar API       *
+*     Calendar API      *
 *************************/
 
+// Get the next 10 calendar events
+app.get('/api/calendar/events/next', (req, res) => {
+
+    return googleCalendar.listEvents(googleAuth)
+    .then((events) => {
+        res.status(200).send({events});
+    }).catch(err => {
+        res.status(400).send('Unexpected error' + err);
+    });
+
+});
+
 // Get an individual calendar event
-app.get('/api/calendar/:eventId', (req, res) => {
+app.get('/api/calendar/events/:eventId', (req, res) => {
     var eventId = req.params.eventId;
 
     return googleCalendar.getEvent(googleAuth, eventId)
@@ -407,21 +507,21 @@ app.get('/do', authenticate, (req, res) => {
     
     var listEventsPromise = googleCalendar.listEvents(googleAuth);
 
-        listEventsPromise.then((eventList) => {
+    listEventsPromise.then((eventList) => {
 
-            return Task.find({
-                _creator: req.user._id
-            }).then((taskList) => {
-                res.render('do.hbs', {
-                    taskList,
-                    eventList
-                })
-            }, (err) => {
-                res.status(400).send(err);
-            });
-        
-        }).catch(err => {
-        res.status(400).send('Unexpected error' + err);
+        return Task.find({
+            _creator: req.user._id
+        }).then((taskList) => {
+            res.render('do.hbs', {
+                taskList,
+                eventList
+            })
+        }, (err) => {
+            res.status(400).send(err);
+        });
+    
+    }).catch(err => {
+        res.status(400).send(err);
     });
 
 });

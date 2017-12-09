@@ -1,6 +1,8 @@
 var mongoose = require('mongoose');
 
-var Task = mongoose.model('Task', {
+const {Tag} = require('./tag');
+
+taskSchema = new mongoose.Schema({
     title: {
         type: String,
         required: true,
@@ -25,8 +27,40 @@ var Task = mongoose.model('Task', {
     },
     _project: {
         type: mongoose.Schema.Types.ObjectId,
-    }
+    },
+    tags: [{
+        _id: {
+            type: mongoose.Schema.Types.ObjectId,
+            required: true
+        },
+        title: {
+            type: String,
+            required: true
+        }
+    }]
 });
+
+taskSchema.methods.toJSON = function () {
+    var task = this;
+
+    tagTitles = task.tags.map((tag) => tag.title);
+
+    var taskToReturn = {
+        _id: task._id,
+        title: task.title,
+        notes: task.notes,
+        completed: task.completed,
+        completedAt: task.completedAt,
+        _project: task._project,
+        tags: tagTitles
+    };
+
+    return taskToReturn;    
+
+};
+
+
+var Task = mongoose.model('Task', taskSchema);
 
 module.exports = {
     Task

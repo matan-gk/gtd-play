@@ -24,7 +24,7 @@ function eventClicked(eventId) {
     $('.eventlistRow').removeClass('active');
     $('.tasklistRow').removeClass('active');
     $('#eventlistRow-' + eventId).addClass('active');
-    $.ajax('/api/calendar/' + eventId).done((res) => {
+    $.ajax('/api/calendar/events/' + eventId).done((res) => {
         if (!res.event) console.log('error. Trying to get event ID ' + taskId + ' and getting empty or malformed response. The response: ' + res);
         else {
             var eventHtml = `<p>ID: ${res.event.id}</p>`;

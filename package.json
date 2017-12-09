@@ -19,8 +19,9 @@
   },
   "devDependencies": {},
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "test": "mocha **/*.test.js",
+    "test-watch": "nodemon --exec \"npm test\"",
+    "start": "node server/server.js"
   },
   "author": "Matan Gal Kochavi",
   "license": "ISC"

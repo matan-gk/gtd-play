@@ -1,0 +1,20 @@
+{
+    "test": {
+        "PORT": 3000,
+        "MONGODB_URI": "mongodb://localhost:27017/todoAppTest",
+        "JWT_SECRET": "long random string",
+        "ONLINE_ENV": "true"
+    },
+    "development": {
+        "PORT": 3000,
+        "MONGODB_URI": "mongodb://localhost:27017/todoAppDev",
+        "JWT_SECRET": "long random string",
+        "ONLINE_ENV": "true"
+    },
+    "offlineDev": {
+        "PORT": 3000,
+        "MONGODB_URI": "mongodb://localhost:27017/todoAppDev",
+        "JWT_SECRET": "long random string",
+        "ONLINE_ENV": "false"
+    }
+}
